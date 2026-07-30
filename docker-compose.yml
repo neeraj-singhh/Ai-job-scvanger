@@ -1,0 +1,32 @@
+version: "3.9"
+
+# Local development stack.
+#
+# NOTE: Supabase (Postgres + Auth) is expected to be a hosted project
+# (https://supabase.com) — DATABASE_URL / SUPABASE_* env vars in `.env`
+# should point at it. This compose file runs the FastAPI backend and
+# the scheduler worker as separate services, matching production
+# topology, so RUN_SCHEDULER_IN_PROCESS=false on the API service.
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - RUN_SCHEDULER_IN_PROCESS=false
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.worker
+    env_file:
+      - .env
+    restart: unless-stopped
+    depends_on:
+      - backend
