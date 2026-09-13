@@ -3,6 +3,7 @@ from __future__ import annotations
 import uuid
 
 from sqlalchemy import func, or_, select
+from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ConflictError, NotFoundError
@@ -50,6 +51,7 @@ class JobService:
     async def get_matches_for_profile(self, profile_id: uuid.UUID, min_score: float = 0.0) -> list[JobMatch]:
         stmt = (
             select(JobMatch)
+            .options(joinedload(JobMatch.job))
             .where(JobMatch.profile_id == profile_id, JobMatch.score >= min_score)
             .order_by(JobMatch.score.desc())
         )
@@ -75,7 +77,18 @@ class JobService:
     async def list_saved_jobs(self, profile_id: uuid.UUID) -> list[SavedJob]:
         stmt = (
             select(SavedJob)
+            .options(joinedload(SavedJob.job))
             .where(SavedJob.profile_id == profile_id)
             .order_by(SavedJob.created_at.desc())
         )
         return list((await self.db.execute(stmt)).scalars().all())
+
+    async def delete_saved_job(self, profile_id: uuid.UUID, job_id: uuid.UUID) -> None:
+        stmt = select(SavedJob).where(
+            SavedJob.profile_id == profile_id, SavedJob.job_id == job_id
+        )
+        saved = (await self.db.execute(stmt)).scalar_one_or_none()
+        if saved is None:
+            raise NotFoundError("Saved job not found")
+        await self.db.delete(saved)
+        await self.db.commit()

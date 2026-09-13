@@ -71,3 +71,14 @@ async def list_saved_jobs(
     current_user: AuthUser = Depends(get_current_user), db: AsyncSession = Depends(get_db_dep)
 ) -> list[SavedJobResponse]:
     return await JobService(db).list_saved_jobs(current_user.id)
+
+
+@router.delete("/saved/{job_id}", status_code=204)
+async def delete_saved_job(
+    job_id: str,
+    current_user: AuthUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_dep),
+) -> None:
+    import uuid
+
+    await JobService(db).delete_saved_job(current_user.id, uuid.UUID(job_id))

@@ -41,3 +41,20 @@ async def mark_read(
     )
     await db.execute(stmt)
     await db.commit()
+
+
+@router.post("/read-all", status_code=204)
+async def mark_all_read(
+    current_user: AuthUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_dep),
+) -> None:
+    stmt = (
+        update(NotificationHistory)
+        .where(
+            NotificationHistory.profile_id == current_user.id,
+            NotificationHistory.read == False,
+        )
+        .values(read=True)
+    )
+    await db.execute(stmt)
+    await db.commit()

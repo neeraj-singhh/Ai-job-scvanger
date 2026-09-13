@@ -9,7 +9,9 @@ logic to mirror a new auth user into our `profiles` table.
 from __future__ import annotations
 
 import jwt
+from gotrue.errors import AuthApiError
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from supabase import Client, create_client
 
@@ -34,15 +36,25 @@ class AuthService:
         self.supabase = get_supabase_client(self.settings)
 
     async def signup(self, payload: SignupRequest) -> TokenResponse:
-        result = self.supabase.auth.sign_up(
-            {
-                "email": payload.email,
-                "password": payload.password,
-                "options": {"data": {"full_name": payload.full_name}},
-            }
-        )
+        try:
+            result = self.supabase.auth.sign_up(
+                {
+                    "email": payload.email,
+                    "password": payload.password,
+                    "options": {"data": {"full_name": payload.full_name}},
+                }
+            )
+        except AuthApiError as exc:
+            msg = exc.message
+            if "already registered" in msg.lower():
+                msg = "An account with this email already exists."
+            raise ValidationAppError(msg) from exc
+        except Exception as exc:
+            logger.error("Supabase signup failed: %s", exc)
+            raise ValidationAppError("Signup failed with provider.") from exc
+
         if result.user is None:
-            raise ValidationAppError("Signup failed. The email may already be registered.")
+            raise ValidationAppError("An account with this email already exists.")
 
         # Mirror into our profiles table so the rest of the app has a
         # first-class row to attach preferences/jobs/matches to.
@@ -51,7 +63,11 @@ class AuthService:
             self.db.add(
                 Profile(id=result.user.id, email=payload.email, full_name=payload.full_name)
             )
-            await self.db.commit()
+            try:
+                await self.db.commit()
+            except IntegrityError:
+                await self.db.rollback()
+                logger.info("Profile already created by DB trigger for user %s", result.user.id)
 
         session = result.session
         return TokenResponse(

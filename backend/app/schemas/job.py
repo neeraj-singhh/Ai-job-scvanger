@@ -23,6 +23,7 @@ class JobResponse(BaseModel):
     responsibilities: list[str]
     benefits: list[str]
     description_normalized: str | None
+    description_raw: str | None
     is_active: bool
     created_at: datetime
 

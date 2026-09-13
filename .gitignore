@@ -1,4 +1,15 @@
+# --- Environment & Secrets ---
 .env
+.env.*
+!.env.example
+*.key
+*.pem
+
+# --- Node ---
+node_modules/
+npm-debug.log*
+
+# --- Python ---
 .venv/
 venv/
 __pycache__/
@@ -6,13 +17,30 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 *.egg-info/
+
+# --- Build Artifacts ---
 dist/
 build/
-
-node_modules/
+frontend/dist/
+frontend/dist-electron/
+frontend/release/
+frontend/out/
 electron/dist/
 electron/build/
 electron/out/
 
+# --- Electron Local Data ---
+userData/
+*.sqlite
+*.sqlite3
+*.leveldb
+
+# --- OS/Editor ---
 .DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+
+# --- Logs ---
 *.log
